@@ -3,22 +3,18 @@ import { createClient } from "@supabase/supabase-js"
 import { createGroq } from "@ai-sdk/groq"
 import { generateText } from "ai"
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
 const groq = createGroq({
   apiKey: process.env.GROQ_API_KEY!,
 })
 
-// Tu template de ejemplo real:
 const TEMPLATE = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Casino Bonus Spin</title>
+  <title>Landing Page</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900">
   <style>
     *{max-width:unset;}
@@ -40,10 +36,45 @@ const TEMPLATE = `<!DOCTYPE html>
       <h1 id="i59yi" class="ll-default-heading">ENVIANOS MENSAJE PARA CREAR TU USUARIO – DUPLICAMOS TU CARGA</h1>
       <h1 id="iwany" class="ll-default-heading">$1,000,000.00</h1>
       <a id="irjot" href="https://wa.me/5491112345678?text=Hola,%20quiero%20duplicar%20mi%20carga" class="ll-empty-block">QUIERO DUPLICAR MI CARGA</a>
+      <!-- LOTTIE_ANIMATION_PLACEHOLDER -->
     </div>
   </section>
 </body>
 </html>`
+
+const systemPrompt = `
+You are an expert frontend developer. Use the following landing page HTML as a strict template.
+When generating new landing pages, only change text content, images, links, or headings based on the user's prompt.
+Do NOT invent new structure or layout.
+Keep all styling, fonts, responsiveness, and structure identical to this template.
+
+If the user asks for an animation, you MUST add the following block inside the \`<!-- LOTTIE_ANIMATION_PLACEHOLDER -->\` comment.
+Find a suitable Lottie animation JSON URL from a public source like lottie.host.
+
+<div id="lottie-animation" style="width: 100%; max-width: 400px; height: 300px; margin: 20px auto 0;"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"><\/script>
+<script>
+  try {
+    lottie.loadAnimation({
+      container: document.getElementById('lottie-animation'),
+      renderer: 'svg',
+      loop: true,
+      autoplay: true,
+      path: 'YOUR_LOTTIE_JSON_URL' // Replace this with the actual Lottie JSON URL
+    });
+  } catch (e) {
+    console.error('Lottie Error:', e);
+    var container = document.getElementById('lottie-animation');
+    if(container) container.innerHTML = 'Error loading animation.';
+  }
+<\/script>
+
+If the user does not ask for an animation, leave the placeholder comment empty.
+
+TEMPLATE:
+${TEMPLATE}
+
+Return only valid, production-ready HTML. No explanations or markdown.`
 
 export async function POST(request: NextRequest) {
   try {
@@ -57,17 +88,6 @@ export async function POST(request: NextRequest) {
     if (userError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
-
-    const systemPrompt = `
-You are a frontend developer. Use the following landing page HTML as a strict template.
-When generating new landing pages, only change text content, images, links, or headings based on the user's prompt.
-Do NOT invent new structure or layout.
-Keep all styling, fonts, responsiveness, and structure identical to this template.
-
-TEMPLATE:
-${TEMPLATE}
-
-Return only valid, production-ready HTML. No explanations or markdown.`
 
     const { text: htmlContent } = await generateText({
       model: groq("llama3-70b-8192"),
